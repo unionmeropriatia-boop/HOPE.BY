@@ -191,124 +191,118 @@
     </section>
   </main>
 
-  <script>
-    // Замените на ваш опубликованный Apps Script Web App (Anyone)
-    const API_URL = 'https://script.google.com/macros/s/AKfycbx0CuIfGvp8RTCvBOOp8IxbCfxzDyxmfHz9j8uiRCM7MJkd5tJAgfZtqoo7O2UHkJDUew/exec';
+ <script>
+  // Укажите адрес FastAPI. Для локального теста:
+  // const API_URL = 'http://localhost:8000/briefs/json';
+  // В продакшене — ваш HTTPS-домен:
+  const API_URL = 'https://ваш-домен/briefs/json';
 
-    const el = (id)=>document.getElementById(id);
-    const show = (node,on)=> node.style.display = on ? '' : 'none';
+  const el = (id)=>document.getElementById(id);
+  const show = (node,on)=> node.style.display = on ? '' : 'none';
 
-    const blocks = {
-      translationWrap: el('translationWrap'),
-      otherWrap: el('otherWrap'),
-      videoWrap: el('videoWrap'),
-      designWrap: el('designWrap'),
-      liveWrap: el('liveWrap')
+  const blocks = {
+    translationWrap: el('translationWrap'),
+    otherWrap: el('otherWrap'),
+    videoWrap: el('videoWrap'),
+    designWrap: el('designWrap'),
+    liveWrap: el('liveWrap')
+  };
+
+  function updateByType(t){
+    show(blocks.translationWrap, t==='translation');
+    show(blocks.otherWrap, t==='other');
+    show(blocks.videoWrap, t==='video');
+    show(blocks.designWrap, t==='design');
+    show(blocks.liveWrap, t==='live');
+  }
+
+  function setLinkView(inputId, viewId){
+    const v = el(inputId).value.trim();
+    el(viewId).innerHTML = v ? ('Ссылка: <a class="link" href="'+v+'" target="_blank">'+v+'</a>') : '';
+  }
+
+  function getCheckedValues(type){
+    return [...document.querySelectorAll('input[data-out="'+type+'"]')].filter(i=>i.checked).map(i=>i.value);
+  }
+
+  function validate(){
+    const t = el('taskType').value;
+    const req = (id)=> {
+      const v = el(id).value.trim();
+      if (!v) throw new Error('Заполните поле: ' + el(id).previousElementSibling.textContent.replace('*','').trim());
+      return v;
     };
 
-    function updateByType(t){
-      show(blocks.translationWrap, t==='translation');
-      show(blocks.otherWrap, t==='other');
-      show(blocks.videoWrap, t==='video');
-      show(blocks.designWrap, t==='design');
-      show(blocks.liveWrap, t==='live');
+    // Общие обязательные
+    req('keyMessage');
+    req('requesterName');
+
+    // Типозависимые обязательные
+    if (t==='translation') {
+      req('sourceLinkTranslation');
+      req('translationAssignee');
+    }
+    if (t==='other') {
+      req('otherSummary');
+      req('otherAssignee');
     }
 
-    function setLinkView(inputId, viewId){
-      const v = el(inputId).value.trim();
-      el(viewId).innerHTML = v ? ('Ссылка: <a class="link" href="'+v+'" target="_blank">'+v+'</a>') : '';
-    }
+    return true;
+  }
 
-    function getCheckedValues(type){
-      return [...document.querySelectorAll('input[data-out="'+type+'"]')].filter(i=>i.checked).map(i=>i.value);
-    }
-
-    function validate(){
+  async function submit(){
+    el('sendMsg').innerHTML = '';
+    try{
+      validate();
       const t = el('taskType').value;
-      const req = (id)=> {
-        const v = el(id).value.trim();
-        if (!v) throw new Error('Заполните поле: ' + el(id).previousElementSibling.textContent.replace('*','').trim());
-        return v;
+      const payload = {
+        taskType: t,
+        deadline: el('deadline').value,
+        keyMessage: el('keyMessage').value.trim(),
+        materialsLink: el('materialsLink').value.trim(),
+        requesterName: el('requesterName').value.trim(),
+        requesterTelegram: el('requesterTelegram').value.trim(),
+        requesterEmail: el('requesterEmail').value.trim(),
+        recordType: el('recordType') ? el('recordType').value : '',
+        outputOptions: t==='design' ? getCheckedValues('design')
+                        : t==='video' ? getCheckedValues('video')
+                        : t==='live' ? getCheckedValues('live')
+                        : [],
+        sourceLinkTranslation: t==='translation' ? el('sourceLinkTranslation').value.trim() : '',
+        translationAssignee: t==='translation' ? el('translationAssignee').value : '',
+        otherSummary: t==='other' ? el('otherSummary').value.trim() : '',
+        otherAssignee: t==='other' ? el('otherAssignee').value : ''
       };
 
-      // Общие обязательные
-      req('keyMessage');
-      req('requesterName');
-
-      // Типозависимые обязательные
-      if (t==='translation') {
-        req('sourceLinkTranslation');
-        req('translationAssignee');
-      }
-      if (t==='other') {
-        req('otherSummary');
-        req('otherAssignee');
-      }
-
-      return true;
-    }
-
-    function toFormData(obj, fd = new FormData()){
-      Object.entries(obj).forEach(([k,v])=>{
-        if (Array.isArray(v)) v.forEach(x=>fd.append(k+'[]', String(x)));
-        else if (v!==undefined && v!==null) fd.append(k, String(v));
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-      return fd;
-    }
-
-    async function submit(){
-      el('sendMsg').innerHTML = '';
-      try{
-        validate();
-        const t = el('taskType').value;
-        const payload = {
-          action: 'create',
-          data: JSON.stringify({
-            taskType: t,
-            deadline: el('deadline').value,
-            keyMessage: el('keyMessage').value.trim(),
-            materialsLink: el('materialsLink').value.trim(),
-            requesterName: el('requesterName').value.trim(),
-            requesterTelegram: el('requesterTelegram').value.trim(),
-            requesterEmail: el('requesterEmail').value.trim(),
-            recordType: el('recordType') ? el('recordType').value : '',
-            outputOptions: t==='design' ? getCheckedValues('design')
-                            : t==='video' ? getCheckedValues('video')
-                            : t==='live' ? getCheckedValues('live')
-                            : [],
-            // Типозависимые
-            sourceLinkTranslation: t==='translation' ? el('sourceLinkTranslation').value.trim() : '',
-            translationAssignee: t==='translation' ? el('translationAssignee').value : '',
-            otherSummary: t==='other' ? el('otherSummary').value.trim() : '',
-            otherAssignee: t==='other' ? el('otherAssignee').value : ''
-          })
-        };
-
-        // Отправка как FormData (без Content-Type)
-        const fd = toFormData(payload);
-        const res = await fetch(API_URL, { method:'POST', body: fd });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        let json = {};
-        try { json = await res.json(); } catch(e) {}
-        const newId = (json && json.data && json.data.id) ? json.data.id : (json.id || '');
-        el('sendMsg').innerHTML = '<div class="msg ok">Заявка отправлена.' + (newId ? (' ID: ' + newId) : '') + '</div>';
-        // Очистить форму
-        // document.querySelector('form') — формы нет, очистим по полям
-        ['keyMessage','materialsLink','requesterName','requesterTelegram','requesterEmail','otherSummary','sourceLinkTranslation'].forEach(i=>{
-          if (el(i)) el(i).value = '';
-        });
-        document.querySelectorAll('input[type="checkbox"]').forEach(i=> i.checked=false);
-      }catch(err){
-        el('sendMsg').innerHTML = '<div class="msg err">Ошибка: '+String(err.message || err)+'</div>';
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error('Ошибка API: ' + res.status + ' ' + text);
       }
-    }
+      const json = await res.json();
+      const newId = json?.id || json?.data?.id || '';
+      el('sendMsg').innerHTML = '<div class="msg ok">Заявка отправлена.' + (newId ? (' ID: ' + newId) : '') + '</div>';
 
-    document.addEventListener('DOMContentLoaded', ()=>{
-      el('taskType').addEventListener('change', (e)=> updateByType(e.target.value));
-      el('materialsLink').addEventListener('input', ()=> setLinkView('materialsLink','materialsLinkView'));
-      updateByType(el('taskType').value);
-      el('sendBtn').addEventListener('click', submit);
-    });
-  </script>
+      // Очистка
+      ['keyMessage','materialsLink','requesterName','requesterTelegram','requesterEmail','otherSummary','sourceLinkTranslation'].forEach(i=>{
+        if (el(i)) el(i).value = '';
+      });
+      document.querySelectorAll('input[type="checkbox"]').forEach(i=> i.checked=false);
+    }catch(err){
+      el('sendMsg').innerHTML = '<div class="msg err">Ошибка: '+String(err.message || err)+'</div>';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    el('taskType').addEventListener('change', (e)=> updateByType(e.target.value));
+    el('materialsLink').addEventListener('input', ()=> setLinkView('materialsLink','materialsLinkView'));
+    updateByType(el('taskType').value);
+    el('sendBtn').addEventListener('click', submit);
+  });
+</script>
 </body>
 </html>
