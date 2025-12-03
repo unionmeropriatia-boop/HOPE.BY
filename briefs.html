@@ -28,7 +28,8 @@
   <div class="grid" id="grid"></div>
 
   <script>
-    const BASE_API_URL = "http://localhost:8000";
+    const BASE_API_URL = "";
+
     const statusEl = document.getElementById("status");
     const gridEl = document.getElementById("grid");
     const qEl = document.getElementById("q");
@@ -49,7 +50,6 @@
       items.forEach((it) => {
         const el = document.createElement("div");
         el.className = "card";
-        const url = it.briefUrl || it.url || null;
         el.innerHTML = `
           <h3>${escapeHTML(it.title || "Без названия")}</h3>
           <div class="meta">
@@ -57,7 +57,6 @@
             Организатор: ${escapeHTML(it.organizer || "")} • Контакты: ${escapeHTML(it.contacts || "")}
           </div>
           <div class="desc">${escapeHTML(it.description || "")}</div>
-          ${url ? `<div style="margin-top:8px;"><a href="${url}" target="_blank" rel="noopener">Открыть</a></div>` : ""}
         `;
         frag.appendChild(el);
       });
@@ -82,9 +81,7 @@
           throw new Error(`Ошибка API: ${resp.status} ${text}`);
         }
         const data = await resp.json();
-        // ожидаем массив объектов
         let items = Array.isArray(data) ? data : (data.items || data.results || []);
-        // простая фильтрация по поиску
         const q = qEl.value.trim().toLowerCase();
         if (q) {
           items = items.filter((it) =>
@@ -104,7 +101,6 @@
     qEl.addEventListener("input", () => loadBriefs());
     reloadBtn.addEventListener("click", () => loadBriefs());
 
-    // первая загрузка
     loadBriefs();
   </script>
 </body>
