@@ -2,106 +2,584 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>Briefs — список заявок</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Бриф — создание и редактирование</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fff; }
-    .card h3 { margin: 0 0 8px; font-size: 18px; }
-    .meta { color: #555; font-size: 14px; margin-bottom: 8px; }
-    .desc { font-size: 15px; }
-    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
-    input[type="search"] { flex: 1; padding: 8px; }
-    .status { margin-bottom: 12px; }
-    .error { color: #b00020; }
+    :root{ --bg:#ffffff; --fg:#111; --muted:#667085; --primary:#1e88e5; --border:#e5e7eb; --hint:#f8fafc; }
+    *{ box-sizing:border-box }
+    body{ font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Segoe UI Emoji","Apple Color Emoji", sans-serif; margin:0; color:var(--fg); background:var(--bg); line-height:1.6; }
+    header{ padding:28px 20px; background:linear-gradient(135deg, var(--primary), #1565c0); color:white; position:relative; text-align:center; }
+    header h1{ font-size:28px; margin:0 0 6px }
+    header .muted{ color:#eaf3ff; font-size:15px }
+    .print-btn{ position:absolute; right:20px; top:20px; background:white; color:#1c1c1c; border:1px solid var(--border); padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700; font-size:14px; }
+    .print-btn:hover{ background:#f3f4f6 }
+    main{ padding:24px 16px; max-width:900px; margin:0 auto; }
+    section{ border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:14px; background:#fbfbfb; width:100%; box-shadow:0 2px 10px rgba(0,0,0,0.04); }
+    .row{ display:flex; gap:12px; flex-wrap:wrap; }
+    .field{ flex:1 1 320px; min-width:280px }
+    label{ font-weight:700; font-size:15px; display:block; margin-bottom:6px }
+    .hint{ font-size:13px; color:var(--muted); margin-top:6px; background:var(--hint); border:1px dashed var(--border); padding:8px 10px; border-radius:8px; }
+    input,select,textarea{ width:100%; padding:12px; border:1px solid var(--border); border-radius:10px; font-size:15px; background:white; box-shadow:inset 0 1px 2px rgba(0,0,0,0.03); }
+    textarea{ min-height:110px; resize:vertical }
+    ::placeholder{ color:#9aa3aa }
+    .checkgrid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 16px }
+    .checkitem{ display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer; user-select:none; }
+    .checkitem input[type="checkbox"]{ width:18px; height:18px; margin:0 }
+    .inline-check{ display:flex; align-items:center; gap:10px }
+    .inline-check label{ margin:0; font-weight:600; display:flex; align-items:center; gap:8px; cursor:pointer }
+    .inline-check input[type="checkbox"], .inline-check input[type="radio"]{ width:18px; height:18px; margin:0 }
+    .actions{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    button.primary{ background:#1e88e5; color:white; border:1px solid #1565c0; padding:12px 16px; border-radius:10px; cursor:pointer; font-weight:700 }
+    button.danger{ background:#d83b3b; color:white; border:1px solid #b22f2f; padding:12px 16px; border-radius:10px; cursor:pointer; font-weight:700 }
+    .msg{ margin-top:12px; padding:12px 14px; border-radius:10px; }
+    .ok{ background:#e7f5ff; border:1px solid #b3e0ff; color:#0b3c61 }
+    .err{ background:#fde7e7; border:1px solid #f2b2b2; color:#7a1d1d }
+    a.link{ color:#1e88e5; word-break: break-word; }
+    @media (max-width:640px){ .checkgrid{grid-template-columns:1fr;} .field{min-width:100%} }
+    @media print {
+      :root{ --fg:#000; }
+      *{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      header{ background:#fff !important; color:#000 !important; text-align:left }
+      header .muted{ color:#000 !important; }
+      .print-btn{ display:none !important; }
+      body{ background:#fff; }
+      section{ background:#fff; border-color:#bbb; box-shadow:none }
+      @page { size: A4; margin: 12mm; }
+    }
   </style>
 </head>
 <body>
-  <h1>Список заявок</h1>
+  <header>
+    <h1>Бриф — создание и редактирование</h1>
+    <p id="subtitle" class="muted">Загрузка...</p>
+    <button class="print-btn" onclick="window.print()">Печать</button>
+  </header>
 
-  <div class="toolbar">
-    <input type="search" id="q" placeholder="Поиск по названию/организатору/месту..." />
-    <button id="reload">Обновить</button>
-  </div>
-  <div class="status" id="status"></div>
-  <div class="grid" id="grid"></div>
+  <main>
+    <!-- Блок: системные поля и тип -->
+    <section>
+      <div class="row">
+        <div class="field">
+          <label>ID</label>
+          <input id="id" name="id" type="text" readonly />
+        </div>
+        <div class="field">
+          <label>Создано</label>
+          <input id="createdAt" name="createdAt" type="text" readonly />
+        </div>
+        <div class="field">
+          <label>Статус</label>
+          <select id="status" name="status">
+            <option value="request_new">Новая заявка</option>
+            <option value="in_review">На рассмотрении</option>
+            <option value="approved">Одобрено</option>
+            <option value="in_progress">В работе</option>
+            <option value="done">Готово</option>
+            <option value="rejected">Отклонено</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px;">
+        <div class="field">
+          <label>Тип задачи</label>
+          <select id="taskType" name="taskType">
+            <option value="video">Видео</option>
+            <option value="design">Дизайн</option>
+            <option value="live">Эфир / Стрим</option>
+            <option value="translation">Перевод (иностр.)</option>
+            <option value="other">Другое</option>
+          </select>
+          <div class="hint">Выберите тип — ниже появятся релевантные секции.</div>
+        </div>
+        <div class="field">
+          <label>Дедлайн выполнения</label>
+          <input id="deadline" name="deadline" type="datetime-local" />
+          <div class="hint">Дата и время, когда результат должен быть готов. Можно оставить пустым.</div>
+        </div>
+        <div class="field" id="recordTypeWrap">
+          <label>Тип записи (для видео)</label>
+          <select id="recordType" name="recordType">
+            <option>Студийная запись</option>
+            <option>Выездная — в городе</option>
+            <option>Выездная — другие города</option>
+          </select>
+          <div class="hint">Выездная запись требует больше времени и может потребовать другой состав команды.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Блок: выходные опции и исполнители по типам -->
+    <section>
+      <div id="sourceTranslation" class="field" style="display:none;">
+        <label>Ссылка на источник (оригинал для перевода) *</label>
+        <input id="sourceLinkTranslation" name="sourceLinkTranslation" type="url" placeholder="https://..." />
+        <div class="hint">Обязательное при типе “Перевод”.</div>
+      </div>
+
+      <!-- Исполнитель перевода: только Дарья/Алёна/Станислав -->
+      <div id="translationAssigneeWrap" class="field" style="display:none; margin-top:12px;">
+        <label>Исполнитель перевода</label>
+        <select id="translationAssignee" name="translationAssignee">
+          <option>Дарья Шендюкова</option>
+          <option>Алёна Попко</option>
+          <option>Станислав Малыгин</option>
+        </select>
+        <div class="hint">Кто отвечает за перевод/озвучку/сборку ролика на иностранном языке.</div>
+      </div>
+
+      <!-- Исполнитель для Другое: расширенный список -->
+      <div id="otherAssigneeWrap" class="field" style="display:none; margin-top:12px;">
+        <label>Исполнитель (Другое)</label>
+        <select id="otherAssignee" name="otherAssignee">
+          <option>Дарья Шендюкова</option>
+          <option>Алёна Попко</option>
+          <option>Станислав Малыгин</option>
+          <option>Богдан Крюков</option>
+          <option>Радион Крюков</option>
+        </select>
+        <div class="hint">Ответственный исполнитель для задач типа “Другое”.</div>
+      </div>
+
+      <div id="outDesign" class="field" style="margin-top:12px; display:none;">
+        <label>Выходной вид (Дизайн)</label>
+        <div class="checkgrid">
+          <label class="checkitem"><input data-out="design" type="checkbox" value="file"> <span>Файл (рендер)</span></label>
+          <label class="checkitem"><input data-out="design" type="checkbox" value="archive"> <span>Архив (проект/исходники)</span></label>
+        </div>
+      </div>
+
+      <div id="outVideo" class="field" style="margin-top:12px; display:none;">
+        <label>Выходной вид (Видео)</label>
+        <div class="checkgrid">
+          <label class="checkitem"><input data-out="video" type="checkbox" value="file"> <span>Файл (рендер)</span></label>
+          <label class="checkitem"><input data-out="video" type="checkbox" value="archive"> <span>Архив (проект/исходники)</span></label>
+          <label class="checkitem"><input data-out="video" type="checkbox" value="yt"> <span>Загрузить на YouTube</span></label>
+          <label class="checkitem"><input data-out="video" type="checkbox" value="rutube"> <span>Загрузить на Рутуб</span></label>
+          <label class="checkitem"><input data-out="video" type="checkbox" value="zen"> <span>Загрузить в Дзен</span></label>
+          <label class="checkitem"><input data-out="video" type="checkbox" value="yadisk"> <span>Загрузить на Яндекс.Диск</span></label>
+        </div>
+      </div>
+
+      <div id="outLive" class="field" style="margin-top:12px; display:none;">
+        <label>Платформы эфира</label>
+        <div class="checkgrid">
+          <label class="checkitem"><input data-out="live" type="checkbox" value="yt"> <span>YouTube</span></label>
+          <label class="checkitem"><input data-out="live" type="checkbox" value="tg"> <span>Телеграм</span></label>
+          <label class="checkitem"><input data-out="live" type="checkbox" value="vkvideo"> <span>ВК Видео</span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Блок: роли по типам -->
+    <section id="rolesVideo" style="display:none;">
+      <div class="section-title">Ответственные по этапам — Видео</div>
+      <div class="row">
+        <div class="field">
+          <label>Съёмка (оператор)</label>
+          <select id="roleVideoShoot" name="roleVideoShoot">
+            <option>Дарья Шендюкова</option>
+            <option>Алёна Попко</option>
+            <option>Станислав Малыгин</option>
+          </select>
+          <div class="hint">Локацию и контакты укажите в примечании (для выезда).</div>
+        </div>
+        <div class="field">
+          <label>Монтаж видео</label>
+          <select id="roleVideoEdit" name="roleVideoEdit">
+            <option>Дарья Шендюкова</option>
+            <option>Алёна Попко</option>
+            <option>Станислав Малыгин</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Звук (обработка)</label>
+          <select id="roleVideoSound" name="roleVideoSound">
+            <option>Радион Крюков</option>
+            <option>Станислав Малыгин</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Сурдоперевод</label>
+          <div class="inline-check">
+            <label><input type="radio" name="signVideo" value="need"> <span>Нужен</span></label>
+            <label><input type="radio" name="signVideo" value="none" checked> <span>Не нужен</span></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="rolesDesign" style="display:none;">
+      <div class="section-title">Ответственные — Дизайн</div>
+      <div class="row">
+        <div class="field">
+          <label>Исполнитель дизайна</label>
+          <select id="roleDesign" name="roleDesign">
+            <option>Дарья Шендюкова</option>
+            <option>Алёна Попко</option>
+            <option>Станислав Малыгин</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section id="rolesLive" style="display:none;">
+      <div class="section-title">Ответственные — Эфир / Стрим</div>
+      <div class="row">
+        <div class="field">
+          <label>Видеооператоры</label>
+          <select id="roleLiveCamera" name="roleLiveCamera">
+            <option>Дарья Шендюкова</option>
+            <option>Алёна Попко</option>
+            <option>Станислав Малыгин</option>
+          </select>
+          <div class="hint">Кто отвечает за камеры и подключение.</div>
+        </div>
+        <div class="field">
+          <label>Режиссёр эфира</label>
+          <select id="roleLiveDirector" name="roleLiveDirector">
+            <option>Дарья Шендюкова</option>
+            <option>Алёна Попко</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Звукорежиссёр эфира</label>
+          <select id="roleLiveSound" name="roleLiveSound">
+            <option>Станислав Малыгин</option>
+            <option>Алёна Попко</option>
+            <option>Богдан Крюков</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Блок: контент и материалы -->
+    <section>
+      <div class="section-title">Контент и материалы</div>
+      <div class="row">
+        <div class="field">
+          <label>Ключевое сообщение / Краткое ТЗ</label>
+          <textarea id="keyMessage" name="keyMessage" placeholder="Основная идея, требования и ограничения..."></textarea>
+          <div class="hint">Кратко: тезисы, цитаты, CTA. Для шортов — хук и длительность.</div>
+        </div>
+        <div class="field">
+          <label>Материалы</label>
+          <textarea id="notes" name="notes" placeholder="Ссылки на исходники, логотипы, титры, субтитры, доступы и пр."></textarea>
+          <div class="hint">Приложите ссылки на облако/диск, чтобы команда быстро получила доступ ко всем материалам.</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field">
+          <label>Ссылка на материалы</label>
+          <input id="materialsLink" name="materialsLink" type="url" placeholder="https://..." />
+          <div id="materialsLinkView" class="hint" style="margin-top:6px;"></div>
+        </div>
+        <div class="field">
+          <label>Референс / источник</label>
+          <input id="sourceLink" name="sourceLink" type="url" placeholder="https://..." />
+          <div id="sourceLinkView" class="hint" style="margin-top:6px;"></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="field">
+          <label>Согласующий</label>
+          <input id="approver" name="approver" type="text" placeholder="ФИО, контакт, дедлайн согласования" />
+        </div>
+        <div class="field">
+          <label>Примечания</label>
+          <textarea id="remarks" name="remarks" placeholder="Ограничения, риски, локация и контакты (для выезда), доп. требования: субтитры, таймкоды, графика."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Блок: контакты заявителя -->
+    <section>
+      <div class="row">
+        <div class="field">
+          <label>Имя заявителя</label>
+          <input id="requesterName" name="requesterName" type="text" />
+        </div>
+        <div class="field">
+          <label>Telegram заявителя</label>
+          <input id="requesterTelegram" name="requesterTelegram" type="text" />
+        </div>
+        <div class="field">
+          <label>Email заявителя</label>
+          <input id="requesterEmail" name="requesterEmail" type="email" />
+        </div>
+      </div>
+      <div class="actions" style="margin-top:8px;">
+        <a id="contactTg" class="primary" style="text-decoration:none; padding:10px 14px; border-radius:10px; background:#1e88e5; color:#fff" target="_blank">Связаться в Telegram</a>
+        <a id="contactMail" class="primary" style="text-decoration:none; padding:10px 14px; border-radius:10px; background:#1e88e5; color:#fff" target="_blank">Написать Email</a>
+      </div>
+    </section>
+
+    <!-- Блок: уведомления -->
+    <section>
+      <div class="row">
+        <div class="field">
+          <label>Уведомления</label>
+          <div class="inline-check">
+            <label><input type="checkbox" id="sendTelegram" name="sendTelegram"> <span>Отправлять в Telegram</span></label>
+            <input id="telegramContact" name="telegramContact" type="text" placeholder="@username или chat_id" />
+          </div>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="inline-check">
+            <label><input type="checkbox" id="sendEmail" name="sendEmail"> <span>Отправлять на Email</span></label>
+            <input id="emailContact" name="emailContact" type="email" placeholder="email получателя" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Действия -->
+    <section>
+      <div class="actions">
+        <button id="createBtn" class="primary">Создать новую заявку</button>
+        <button id="saveBtn" class="primary">Сохранить изменения</button>
+        <button id="rejectBtn" class="danger">Отклонить заявку</button>
+      </div>
+      <div id="saveMsg"></div>
+    </section>
+  </main>
 
   <script>
-    const BASE_API_URL = "";
+    const API_URL = 'https://script.google.com/macros/s/AKfycbx0CuIfGvp8RTCvBOOp8IxbCfxzDyxmfHz9j8uiRCM7MJkd5tJAgfZtqoo7O2UHkJDUew/exec';
 
-    const statusEl = document.getElementById("status");
-    const gridEl = document.getElementById("grid");
-    const qEl = document.getElementById("q");
-    const reloadBtn = document.getElementById("reload");
+    const qs = new URLSearchParams(location.search);
+    const idParam = qs.get('id');
 
-    function setStatus(html, cls = "") {
-      statusEl.className = cls;
-      statusEl.innerHTML = html;
+    const el = (id)=>document.getElementById(id);
+    const show = (node,on)=> node.style.display = on ? '' : 'none';
+
+    const sections = {
+      outDesign: el('outDesign'),
+      outVideo: el('outVideo'),
+      outLive: el('outLive'),
+      sourceTranslation: el('sourceTranslation'),
+      translationAssigneeWrap: document.getElementById('translationAssigneeWrap'),
+      otherAssigneeWrap: document.getElementById('otherAssigneeWrap'),
+      rolesVideo: document.getElementById('rolesVideo'),
+      rolesDesign: document.getElementById('rolesDesign'),
+      rolesLive: document.getElementById('rolesLive'),
+      recordTypeWrap: document.getElementById('recordTypeWrap')
+    };
+
+    function setLinkView(inputId, viewId){
+      const v = el(inputId).value.trim();
+      el(viewId).innerHTML = v ? ('Ссылка: <a class="link" href="'+v+'" target="_blank">'+v+'</a>') : '—';
     }
 
-    function renderCards(items) {
-      gridEl.innerHTML = "";
-      if (!items?.length) {
-        gridEl.innerHTML = "<p>Нет записей.</p>";
+    function getCheckedValuesByType(type){
+      return [...document.querySelectorAll('input[data-out="'+type+'"]')].filter(i=>i.checked).map(i=>i.value);
+    }
+
+    function setCheckedValuesByType(type, values){
+      const set = new Set(values||[]);
+      document.querySelectorAll('input[data-out="'+type+'"]').forEach(i=> i.checked = set.has(i.value));
+    }
+
+    function updateVisibilityByType(t){
+      show(sections.outDesign, t==='design');
+      show(sections.outVideo, t==='video');
+      show(sections.outLive, t==='live');
+      show(sections.sourceTranslation, t==='translation');
+      show(sections.translationAssigneeWrap, t==='translation');
+      show(sections.otherAssigneeWrap, t==='other');
+      show(sections.rolesVideo, t==='video');
+      show(sections.rolesDesign, t==='design');
+      show(sections.rolesLive, t==='live');
+      show(sections.recordTypeWrap, t==='video');
+    }
+
+    function fillContactsButtons(){
+      const tg = el('requesterTelegram').value || '';
+      el('contactTg').href = tg ? ('https://t.me/' + tg.replace('@','')) : 'https://t.me/';
+      const mail = el('requesterEmail').value || '';
+      el('contactMail').href = mail ? ('mailto:' + mail) : 'mailto:';
+    }
+
+    async function loadCard(){
+      if (!idParam) {
+        el('subtitle').textContent = 'Режим: новая заявка';
+        el('id').value = '';
         return;
       }
-      const frag = document.createDocumentFragment();
-      items.forEach((it) => {
-        const el = document.createElement("div");
-        el.className = "card";
-        el.innerHTML = `
-          <h3>${escapeHTML(it.title || "Без названия")}</h3>
-          <div class="meta">
-            ${escapeHTML(it.datetime || "")} • ${escapeHTML(it.place || "")}<br/>
-            Организатор: ${escapeHTML(it.organizer || "")} • Контакты: ${escapeHTML(it.contacts || "")}
-          </div>
-          <div class="desc">${escapeHTML(it.description || "")}</div>
-        `;
-        frag.appendChild(el);
-      });
-      gridEl.appendChild(frag);
-    }
+      el('subtitle').textContent = 'Загрузка #' + idParam + '...';
+      try{
+        const res = await fetch(API_URL + '?id=' + encodeURIComponent(idParam));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Ошибка загрузки');
+        const d = json.data;
 
-    function escapeHTML(s) {
-      return String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
+        ['id','createdAt','status','taskType','deadline','recordType','keyMessage','notes','materialsLink','sourceLink','requesterName','requesterTelegram','requesterEmail','telegramContact','emailContact','approver','remarks','translationAssignee','otherAssignee']
+          .forEach(f=>{ if (el(f)) el(f).value = d[f] ?? ''; });
 
-    async function loadBriefs() {
-      setStatus("Загрузка...", "");
-      try {
-        const resp = await fetch(`${BASE_API_URL}/briefs`, { method: "GET" });
-        if (!resp.ok) {
-          const text = await resp.text();
-          throw new Error(`Ошибка API: ${resp.status} ${text}`);
+        el('sendTelegram').checked = String(d.sendTelegram).toLowerCase()==='true';
+        el('sendEmail').checked = String(d.sendEmail).toLowerCase()==='true';
+
+        const tt = d.taskType || 'design';
+        updateVisibilityByType(tt);
+        setCheckedValuesByType('design', tt==='design' ? (d.outputOptions||[]) : []);
+        setCheckedValuesByType('video', tt==='video' ? (d.outputOptions||[]) : []);
+        setCheckedValuesByType('live', tt==='live' ? (d.outputOptions||[]) : []);
+
+        if (tt==='translation'){
+          el('sourceLinkTranslation').value = d.sourceLink || '';
+          el('translationAssignee').value = d.translationAssignee || 'Дарья Шендюкова';
         }
-        const data = await resp.json();
-        let items = Array.isArray(data) ? data : (data.items || data.results || []);
-        const q = qEl.value.trim().toLowerCase();
-        if (q) {
-          items = items.filter((it) =>
-            [it.title, it.organizer, it.place, it.description]
-              .filter(Boolean)
-              .some((v) => String(v).toLowerCase().includes(q))
-          );
+        if (tt==='other'){
+          el('otherAssignee').value = d.otherAssignee || 'Дарья Шендюкова';
         }
-        renderCards(items);
-        setStatus("", "");
-      } catch (err) {
-        console.error(err);
-        setStatus(`Не удалось загрузить список. ${err.message}`, "error");
+
+        setLinkView('materialsLink','materialsLinkView');
+        setLinkView('sourceLink','sourceLinkView');
+
+        fillContactsButtons();
+
+        el('subtitle').textContent = (d.taskType || '') + (d.deadline ? (' • ' + d.deadline) : '');
+      }catch(err){
+        el('subtitle').textContent = 'Ошибка: ' + String(err.message || err);
+        el('saveMsg').innerHTML = '<div class="msg err">Не удалось загрузить карточку: '+String(err.message || err)+'</div>';
       }
     }
 
-    qEl.addEventListener("input", () => loadBriefs());
-    reloadBtn.addEventListener("click", () => loadBriefs());
+    function collectPayload(action){
+      const t = el('taskType').value;
+      let outputOptions = [];
+      if (t==='design') outputOptions = getCheckedValuesByType('design');
+      if (t==='video') outputOptions = getCheckedValuesByType('video');
+      if (t==='live') outputOptions = getCheckedValuesByType('live');
 
-    loadBriefs();
+      if (t==='translation' && !el('sourceLinkTranslation').value.trim()){
+        throw new Error('Для типа "Перевод" требуется ссылка на источник.');
+      }
+
+      const data = {
+        id: el('id').value || '',
+        status: el('status').value,
+        taskType: t,
+        deadline: el('deadline').value,
+        recordType: el('recordType').value || '',
+        keyMessage: el('keyMessage').value,
+        notes: el('notes').value,
+        materialsLink: el('materialsLink').value,
+        sourceLink: t==='translation' ? el('sourceLinkTranslation').value : el('sourceLink').value,
+        requesterName: el('requesterName').value,
+        requesterTelegram: el('requesterTelegram').value,
+        requesterEmail: el('requesterEmail').value,
+        sendTelegram: el('sendTelegram').checked,
+        telegramContact: el('telegramContact').value,
+        sendEmail: el('sendEmail').checked,
+        emailContact: el('emailContact').value,
+        outputOptions,
+        roleVideoShoot: el('roleVideoShoot') ? el('roleVideoShoot').value : '',
+        roleVideoEdit: el('roleVideoEdit') ? el('roleVideoEdit').value : '',
+        roleVideoSound: el('roleVideoSound') ? el('roleVideoSound').value : '',
+        signVideo: (document.querySelector('input[name="signVideo"]:checked')||{}).value || 'none',
+        roleDesign: el('roleDesign') ? el('roleDesign').value : '',
+        roleLiveCamera: el('roleLiveCamera') ? el('roleLiveCamera').value : '',
+        roleLiveDirector: el('roleLiveDirector') ? el('roleLiveDirector').value : '',
+        roleLiveSound: el('roleLiveSound') ? el('roleLiveSound').value : '',
+        translationAssignee: (t==='translation' && el('translationAssignee')) ? el('translationAssignee').value : '',
+        otherAssignee: (t==='other' && el('otherAssignee')) ? el('otherAssignee').value : '',
+        approver: el('approver').value,
+        remarks: el('remarks').value
+      };
+
+      return { action, data };
+    }
+
+    function toFormData(obj, fd = new FormData(), prefix = '') {
+      Object.entries(obj).forEach(([key, value]) => {
+        const k = prefix ? prefix + '[' + key + ']' : key;
+        if (Array.isArray(value)) {
+          value.forEach(v => fd.append(k + '[]', String(v)));
+        } else if (value !== undefined && value !== null) {
+          fd.append(k, String(value));
+        }
+      });
+      return fd;
+    }
+
+    async function sendToApi(payload){
+      const fd = toFormData(payload);
+      const res = await fetch(API_URL, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      let json = {};
+      try { json = await res.json(); } catch(e) {}
+      return json;
+    }
+
+    async function handleCreate(){
+      el('saveMsg').innerHTML = '';
+      try{
+        const payload = collectPayload('create');
+        const json = await sendToApi(payload);
+        const newId = (json && json.data && json.data.id) ? json.data.id : (json.id || '');
+        el('saveMsg').innerHTML = '<div class="msg ok">Заявка создана.'+(newId ? (' ID: '+newId) : '')+'</div>';
+        if (newId) {
+          const url = new URL(location.href);
+          url.searchParams.set('id', newId);
+          history.replaceState(null, '', url.toString());
+          el('id').value = newId;
+          await loadCard();
+        }
+      }catch(err){
+        el('saveMsg').innerHTML = '<div class="msg err">Не удалось создать заявку: '+String(err.message || err)+'</div>';
+      }
+    }
+
+    async function handleSave(){
+      el('saveMsg').innerHTML = '';
+      try{
+        const payload = collectPayload('update');
+        const json = await sendToApi(payload);
+        el('saveMsg').innerHTML = '<div class="msg ok">Изменения сохранены.</div>';
+      }catch(err){
+        el('saveMsg').innerHTML = '<div class="msg err">Не удалось сохранить: '+String(err.message || err)+'</div>';
+      }
+    }
+
+    async function handleReject(){
+      el('saveMsg').innerHTML = '';
+      try{
+        const payload = collectPayload('reject');
+        const json = await sendToApi(payload);
+        el('saveMsg').innerHTML = '<div class="msg ok">Заявка отклонена.</div>';
+      }catch(err){
+        el('saveMsg').innerHTML = '<div class="msg err">Не удалось отклонить: '+String(err.message || err)+'</div>';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      el('taskType').addEventListener('change', (e)=>{
+        updateVisibilityByType(e.target.value);
+      });
+
+      ['materialsLink','sourceLink'].forEach(id=>{
+        const input = el(id);
+        input.addEventListener('input', ()=> setLinkView(id, id+'View'));
+      });
+
+      ['requesterTelegram','requesterEmail'].forEach(id=>{
+        el(id).addEventListener('input', fillContactsButtons);
+      });
+
+      el('createBtn').addEventListener('click', handleCreate);
+      el('saveBtn').addEventListener('click', handleSave);
+      el('rejectBtn').addEventListener('click', handleReject);
+
+      updateVisibilityByType('design'); // дефолт
+      loadCard();
+    });
   </script>
 </body>
 </html>
