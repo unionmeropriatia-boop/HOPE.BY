@@ -2,110 +2,312 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Упрощённая заявка — быстрый бриф</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
-    form { max-width: 720px; margin: 0 auto; display: grid; gap: 12px; }
-    label { display: grid; gap: 6px; }
-    input, textarea, select, button { padding: 10px; font-size: 16px; }
-    button { cursor: pointer; }
-    .status { max-width: 720px; margin: 16px auto; }
-    .error { color: #b00020; }
-    .success { color: #0b8043; }
+    :root{ --bg:#ffffff; --fg:#111; --muted:#667085; --primary:#1e88e5; --border:#e5e7eb; --hint:#f8fafc; }
+    *{ box-sizing:border-box }
+    body{ font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Segoe UI Emoji","Apple Color Emoji", sans-serif; margin:0; color:var(--fg); background:var(--bg); line-height:1.6; }
+    header{ padding:22px 16px; background:linear-gradient(135deg, var(--primary), #1565c0); color:white; text-align:center; }
+    header h1{ font-size:22px; margin:0 0 6px }
+    header .muted{ color:#eaf3ff; font-size:14px }
+    main{ padding:18px 12px; max-width:720px; margin:0 auto; }
+    section{ border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; background:#fbfbfb; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .field{ flex:1 1 300px; min-width:260px }
+    label{ font-weight:700; font-size:14px; display:block; margin-bottom:6px }
+    .hint{ font-size:12px; color:var(--muted); margin-top:6px; background:var(--hint); border:1px dashed var(--border); padding:6px 8px; border-radius:8px; }
+    input,select,textarea{ width:100%; padding:10px; border:1px solid var(--border); border-radius:10px; font-size:14px; background:white; box-shadow:inset 0 1px 2px rgba(0,0,0,0.03); }
+    textarea{ min-height:90px; resize:vertical }
+    ::placeholder{ color:#9aa3aa }
+    .checkgrid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px }
+    .checkitem{ display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer; user-select:none; }
+    .checkitem input[type="checkbox"]{ width:16px; height:16px; margin:0 }
+    .inline{ display:flex; align-items:center; gap:8px }
+    .actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    button.primary{ background:#1e88e5; color:white; border:1px solid #1565c0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700 }
+    .msg{ margin-top:10px; padding:10px 12px; border-radius:10px; }
+    .ok{ background:#e7f5ff; border:1px solid #b3e0ff; color:#0b3c61 }
+    .err{ background:#fde7e7; border:1px solid #f2b2b2; color:#7a1d1d }
+    @media (max-width:640px){ .checkgrid{grid-template-columns:1fr;} .field{min-width:100%} }
   </style>
 </head>
 <body>
-  <h1>Упрощённая заявка — быстрый бриф</h1>
+  <header>
+    <h1>Быстрая заявка</h1>
+    <p class="muted">Минимальная форма для создания заявки. Подробное редактирование — в полном брифе.</p>
+  </header>
 
-  <form id="briefForm">
-    <label>
-      Название мероприятия
-      <input type="text" name="title" required />
-    </label>
-    <label>
-      Дата/время
-      <input type="text" name="datetime" placeholder="например: 25.12.2025, 19:00" required />
-    </label>
-    <label>
-      Место проведения
-      <input type="text" name="place" required />
-    </label>
-    <label>
-      Организатор
-      <input type="text" name="organizer" required />
-    </label>
-    <label>
-      Контакты (телефон/почта)
-      <input type="text" name="contacts" required />
-    </label>
-    <label>
-      Краткое описание
-      <textarea name="description" rows="4" required></textarea>
-    </label>
-    <button type="submit">Отправить</button>
-  </form>
+  <main>
+    <!-- Ключевые поля -->
+    <section>
+      <div class="row">
+        <div class="field">
+          <label>Тип задачи *</label>
+          <select id="taskType" name="taskType" required>
+            <option value="design">Дизайн</option>
+            <option value="video">Видео</option>
+            <option value="live">Эфир / Стрим</option>
+            <option value="translation">Перевод (иностр.)</option>
+            <option value="other">Другое</option>
+          </select>
+          <div class="hint">Выберите тип — появятся обязательные поля для него.</div>
+        </div>
+        <div class="field">
+          <label>Дедлайн (необязательно)</label>
+          <input id="deadline" name="deadline" type="datetime-local" />
+        </div>
+      </div>
+    </section>
 
-  <div class="status" id="status"></div>
+    <!-- Типозависимые минимальные поля -->
+    <section>
+      <!-- Перевод -->
+      <div id="translationWrap" style="display:none;">
+        <div class="row">
+          <div class="field">
+            <label>Ссылка на источник (перевод) *</label>
+            <input id="sourceLinkTranslation" name="sourceLinkTranslation" type="url" placeholder="https://..." />
+          </div>
+          <div class="field">
+            <label>Исполнитель перевода *</label>
+            <select id="translationAssignee" name="translationAssignee">
+              <option>Дарья Шендюкова</option>
+              <option>Алёна Попко</option>
+              <option>Станислав Малыгин</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Другое -->
+      <div id="otherWrap" style="display:none;">
+        <div class="row">
+          <div class="field">
+            <label>Кратко опишите задачу *</label>
+            <input id="otherSummary" name="otherSummary" type="text" placeholder="Что нужно сделать?" />
+          </div>
+          <div class="field">
+            <label>Исполнитель (Другое) *</label>
+            <select id="otherAssignee" name="otherAssignee">
+              <option>Дарья Шендюкова</option>
+              <option>Алёна Попко</option>
+              <option>Станислав Малыгин</option>
+              <option>Богдан Крюков</option>
+              <option>Радион Крюков</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Видео -->
+      <div id="videoWrap" style="display:none;">
+        <div class="row">
+          <div class="field">
+            <label>Тип записи</label>
+            <select id="recordType" name="recordType">
+              <option>Студийная запись</option>
+              <option>Выездная — в городе</option>
+              <option>Выездная — другие города</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Выходной вид</label>
+            <div class="checkgrid">
+              <label class="checkitem"><input data-out="video" type="checkbox" value="file"> <span>Файл (рендер)</span></label>
+              <label class="checkitem"><input data-out="video" type="checkbox" value="archive"> <span>Архив (проект/исходники)</span></label>
+              <label class="checkitem"><input data-out="video" type="checkbox" value="yt"> <span>Загрузить на YouTube</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Дизайн -->
+      <div id="designWrap" style="display:none;">
+        <div class="row">
+          <div class="field">
+            <label>Выходной вид</label>
+            <div class="checkgrid">
+              <label class="checkitem"><input data-out="design" type="checkbox" value="file"> <span>Файл (рендер)</span></label>
+              <label class="checkitem"><input data-out="design" type="checkbox" value="archive"> <span>Архив (исходники)</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Эфир / Стрим -->
+      <div id="liveWrap" style="display:none;">
+        <div class="row">
+          <div class="field">
+            <label>Платформы эфира</label>
+            <div class="checkgrid">
+              <label class="checkitem"><input data-out="live" type="checkbox" value="yt"> <span>YouTube</span></label>
+              <label class="checkitem"><input data-out="live" type="checkbox" value="tg"> <span>Телеграм</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Суть задачи и ссылки -->
+    <section>
+      <div class="row">
+        <div class="field">
+          <label>Ключевое сообщение / задача *</label>
+          <textarea id="keyMessage" name="keyMessage" placeholder="Одно-два предложения, что нужно сделать и какой результат ожидается."></textarea>
+        </div>
+        <div class="field">
+          <label>Ссылка на материалы (если есть)</label>
+          <input id="materialsLink" name="materialsLink" type="url" placeholder="https://..." />
+          <div id="materialsLinkView" class="hint" style="margin-top:6px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Контакты заявителя -->
+    <section>
+      <div class="row">
+        <div class="field">
+          <label>Имя заявителя *</label>
+          <input id="requesterName" name="requesterName" type="text" />
+        </div>
+        <div class="field">
+          <label>Telegram заявителя</label>
+          <input id="requesterTelegram" name="requesterTelegram" type="text" placeholder="@username" />
+        </div>
+        <div class="field">
+          <label>Email заявителя</label>
+          <input id="requesterEmail" name="requesterEmail" type="email" placeholder="name@example.com" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Отправка -->
+    <section>
+      <div class="actions">
+        <button id="sendBtn" class="primary">Отправить заявку</button>
+      </div>
+      <div id="sendMsg"></div>
+    </section>
+  </main>
 
   <script>
-    // Если открываете через FastAPI StaticFiles, можно использовать относительный URL:
-    const BASE_API_URL = "";
+    // Замените на ваш опубликованный Apps Script Web App (Anyone)
+    const API_URL = 'https://script.google.com/macros/s/AKfycbx0CuIfGvp8RTCvBOOp8IxbCfxzDyxmfHz9j8uiRCM7MJkd5tJAgfZtqoo7O2UHkJDUew/exec';
 
-    const form = document.getElementById("briefForm");
-    const statusEl = document.getElementById("status");
+    const el = (id)=>document.getElementById(id);
+    const show = (node,on)=> node.style.display = on ? '' : 'none';
 
-    function setStatus(html, cls = "") {
-      statusEl.className = cls;
-      statusEl.innerHTML = html;
+    const blocks = {
+      translationWrap: el('translationWrap'),
+      otherWrap: el('otherWrap'),
+      videoWrap: el('videoWrap'),
+      designWrap: el('designWrap'),
+      liveWrap: el('liveWrap')
+    };
+
+    function updateByType(t){
+      show(blocks.translationWrap, t==='translation');
+      show(blocks.otherWrap, t==='other');
+      show(blocks.videoWrap, t==='video');
+      show(blocks.designWrap, t==='design');
+      show(blocks.liveWrap, t==='live');
     }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      setStatus("Отправка...", "");
+    function setLinkView(inputId, viewId){
+      const v = el(inputId).value.trim();
+      el(viewId).innerHTML = v ? ('Ссылка: <a class="link" href="'+v+'" target="_blank">'+v+'</a>') : '';
+    }
 
-      const formData = new FormData(form);
-      const payload = {
-        title: formData.get("title")?.trim(),
-        datetime: formData.get("datetime")?.trim(),
-        place: formData.get("place")?.trim(),
-        organizer: formData.get("organizer")?.trim(),
-        contacts: formData.get("contacts")?.trim(),
-        description: formData.get("description")?.trim(),
+    function getCheckedValues(type){
+      return [...document.querySelectorAll('input[data-out="'+type+'"]')].filter(i=>i.checked).map(i=>i.value);
+    }
+
+    function validate(){
+      const t = el('taskType').value;
+      const req = (id)=> {
+        const v = el(id).value.trim();
+        if (!v) throw new Error('Заполните поле: ' + el(id).previousElementSibling.textContent.replace('*','').trim());
+        return v;
       };
 
-      for (const [k, v] of Object.entries(payload)) {
-        if (!v) {
-          setStatus(`Поле "${k}" не заполнено.`, "error");
-          return;
-        }
+      // Общие обязательные
+      req('keyMessage');
+      req('requesterName');
+
+      // Типозависимые обязательные
+      if (t==='translation') {
+        req('sourceLinkTranslation');
+        req('translationAssignee');
+      }
+      if (t==='other') {
+        req('otherSummary');
+        req('otherAssignee');
       }
 
-      try {
-        const resp = await fetch(`${BASE_API_URL}/briefs/json`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+      return true;
+    }
+
+    function toFormData(obj, fd = new FormData()){
+      Object.entries(obj).forEach(([k,v])=>{
+        if (Array.isArray(v)) v.forEach(x=>fd.append(k+'[]', String(x)));
+        else if (v!==undefined && v!==null) fd.append(k, String(v));
+      });
+      return fd;
+    }
+
+    async function submit(){
+      el('sendMsg').innerHTML = '';
+      try{
+        validate();
+        const t = el('taskType').value;
+        const payload = {
+          action: 'create',
+          data: JSON.stringify({
+            taskType: t,
+            deadline: el('deadline').value,
+            keyMessage: el('keyMessage').value.trim(),
+            materialsLink: el('materialsLink').value.trim(),
+            requesterName: el('requesterName').value.trim(),
+            requesterTelegram: el('requesterTelegram').value.trim(),
+            requesterEmail: el('requesterEmail').value.trim(),
+            recordType: el('recordType') ? el('recordType').value : '',
+            outputOptions: t==='design' ? getCheckedValues('design')
+                            : t==='video' ? getCheckedValues('video')
+                            : t==='live' ? getCheckedValues('live')
+                            : [],
+            // Типозависимые
+            sourceLinkTranslation: t==='translation' ? el('sourceLinkTranslation').value.trim() : '',
+            translationAssignee: t==='translation' ? el('translationAssignee').value : '',
+            otherSummary: t==='other' ? el('otherSummary').value.trim() : '',
+            otherAssignee: t==='other' ? el('otherAssignee').value : ''
+          })
+        };
+
+        // Отправка как FormData (без Content-Type)
+        const fd = toFormData(payload);
+        const res = await fetch(API_URL, { method:'POST', body: fd });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        let json = {};
+        try { json = await res.json(); } catch(e) {}
+        const newId = (json && json.data && json.data.id) ? json.data.id : (json.id || '');
+        el('sendMsg').innerHTML = '<div class="msg ok">Заявка отправлена.' + (newId ? (' ID: ' + newId) : '') + '</div>';
+        // Очистить форму
+        // document.querySelector('form') — формы нет, очистим по полям
+        ['keyMessage','materialsLink','requesterName','requesterTelegram','requesterEmail','otherSummary','sourceLinkTranslation'].forEach(i=>{
+          if (el(i)) el(i).value = '';
         });
-
-        if (!resp.ok) {
-          const text = await resp.text();
-          throw new Error(`Ошибка API: ${resp.status} ${text}`);
-        }
-
-        const data = await resp.json();
-        setStatus(
-          `Заявка отправлена. Диапазон: ${data.updatedRange || "добавлено"}`,
-          "success"
-        );
-        form.reset();
-      } catch (err) {
-        console.error(err);
-        setStatus(
-          `Не удалось отправить заявку. ${err.message}. Убедитесь, что сервер запущен и CORS настроен.`,
-          "error"
-        );
+        document.querySelectorAll('input[type="checkbox"]').forEach(i=> i.checked=false);
+      }catch(err){
+        el('sendMsg').innerHTML = '<div class="msg err">Ошибка: '+String(err.message || err)+'</div>';
       }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      el('taskType').addEventListener('change', (e)=> updateByType(e.target.value));
+      el('materialsLink').addEventListener('input', ()=> setLinkView('materialsLink','materialsLinkView'));
+      updateByType(el('taskType').value);
+      el('sendBtn').addEventListener('click', submit);
     });
   </script>
 </body>
