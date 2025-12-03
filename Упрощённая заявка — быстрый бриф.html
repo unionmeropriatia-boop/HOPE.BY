@@ -49,10 +49,8 @@
   <div class="status" id="status"></div>
 
   <script>
-    // УКАЖИТЕ адрес вашего бэкенда:
-    // - локально: "http://localhost:8000"
-    // - на проде: "https://<ваш-домен>"
-    const BASE_API_URL = "http://localhost:8000";
+    // Если открываете через FastAPI StaticFiles, можно использовать относительный URL:
+    const BASE_API_URL = "";
 
     const form = document.getElementById("briefForm");
     const statusEl = document.getElementById("status");
@@ -76,7 +74,6 @@
         description: formData.get("description")?.trim(),
       };
 
-      // простая валидация
       for (const [k, v] of Object.entries(payload)) {
         if (!v) {
           setStatus(`Поле "${k}" не заполнено.`, "error");
@@ -97,22 +94,15 @@
         }
 
         const data = await resp.json();
-        // предполагаем, что бэкенд возвращает объект с briefUrl или id
-        const briefUrl = data.briefUrl || data.url || null;
-
         setStatus(
-          `Заявка отправлена. ${
-            briefUrl
-              ? `Ссылка: <a href="${briefUrl}" target="_blank" rel="noopener">${briefUrl}</a>`
-              : "Строка добавлена в Google Sheets."
-          }`,
+          `Заявка отправлена. Диапазон: ${data.updatedRange || "добавлено"}`,
           "success"
         );
         form.reset();
       } catch (err) {
         console.error(err);
         setStatus(
-          `Не удалось отправить заявку. ${err.message}. Проверьте, что сервер запущен и разрешён CORS.`,
+          `Не удалось отправить заявку. ${err.message}. Убедитесь, что сервер запущен и CORS настроен.`,
           "error"
         );
       }
