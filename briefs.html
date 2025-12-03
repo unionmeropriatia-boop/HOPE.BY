@@ -349,237 +349,114 @@
     </section>
   </main>
 
-  <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbx0CuIfGvp8RTCvBOOp8IxbCfxzDyxmfHz9j8uiRCM7MJkd5tJAgfZtqoo7O2UHkJDUew/exec';
+ <script>
+  // Укажите базовый адрес FastAPI (локально): 'http://localhost:8000'
+  // В продакшене — ваш HTTPS-домен
+  const API_BASE = 'http://localhost:8000';
 
-    const qs = new URLSearchParams(location.search);
-    const idParam = qs.get('id');
+  const el = (id)=>document.getElementById(id);
+  const show = (node,on)=> node.style.display = on ? '' : 'none';
 
-    const el = (id)=>document.getElementById(id);
-    const show = (node,on)=> node.style.display = on ? '' : 'none';
+  const qs = new URLSearchParams(location.search);
+  const idParam = qs.get('id');
 
-    const sections = {
-      outDesign: el('outDesign'),
-      outVideo: el('outVideo'),
-      outLive: el('outLive'),
-      sourceTranslation: el('sourceTranslation'),
-      translationAssigneeWrap: document.getElementById('translationAssigneeWrap'),
-      otherAssigneeWrap: document.getElementById('otherAssigneeWrap'),
-      rolesVideo: document.getElementById('rolesVideo'),
-      rolesDesign: document.getElementById('rolesDesign'),
-      rolesLive: document.getElementById('rolesLive'),
-      recordTypeWrap: document.getElementById('recordTypeWrap')
-    };
+  const sections = {
+    outDesign: el('outDesign'),
+    outVideo: el('outVideo'),
+    outLive: el('outLive'),
+    sourceTranslation: el('sourceTranslation'),
+    translationAssigneeWrap: document.getElementById('translationAssigneeWrap'),
+    otherAssigneeWrap: document.getElementById('otherAssigneeWrap'),
+    rolesVideo: document.getElementById('rolesVideo'),
+    rolesDesign: document.getElementById('rolesDesign'),
+    rolesLive: document.getElementById('rolesLive'),
+    recordTypeWrap: document.getElementById('recordTypeWrap')
+  };
 
-    function setLinkView(inputId, viewId){
-      const v = el(inputId).value.trim();
-      el(viewId).innerHTML = v ? ('Ссылка: <a class="link" href="'+v+'" target="_blank">'+v+'</a>') : '—';
+  function setLinkView(inputId, viewId){
+    const v = el(inputId).value.trim();
+    el(viewId).innerHTML = v ? ('Ссылка: <a class="link" href="'+v+'" target="_blank">'+v+'</a>') : '—';
+  }
+
+  function getCheckedValuesByType(type){
+    return [...document.querySelectorAll('input[data-out="'+type+'"]')].filter(i=>i.checked).map(i=>i.value);
+  }
+
+  function setCheckedValuesByType(type, values){
+    const set = new Set(values||[]);
+    document.querySelectorAll('input[data-out="'+type+'"]').forEach(i=> i.checked = set.has(i.value));
+  }
+
+  function updateVisibilityByType(t){
+    show(sections.outDesign, t==='design');
+    show(sections.outVideo, t==='video');
+    show(sections.outLive, t==='live');
+    show(sections.sourceTranslation, t==='translation');
+    show(sections.translationAssigneeWrap, t==='translation');
+    show(sections.otherAssigneeWrap, t==='other');
+    show(sections.rolesVideo, t==='video');
+    show(sections.rolesDesign, t==='design');
+    show(sections.rolesLive, t==='live');
+    show(sections.recordTypeWrap, t==='video');
+  }
+
+  function fillContactsButtons(){
+    const tg = el('requesterTelegram').value || '';
+    el('contactTg').href = tg ? ('https://t.me/' + tg.replace('@','')) : 'https://t.me/';
+    const mail = el('requesterEmail').value || '';
+    el('contactMail').href = mail ? ('mailto:' + mail) : 'mailto:';
+  }
+
+  async function loadCard(){
+    if (!idParam) {
+      el('subtitle').textContent = 'Режим: новая заявка';
+      el('id').value = '';
+      return;
     }
-
-    function getCheckedValuesByType(type){
-      return [...document.querySelectorAll('input[data-out="'+type+'"]')].filter(i=>i.checked).map(i=>i.value);
-    }
-
-    function setCheckedValuesByType(type, values){
-      const set = new Set(values||[]);
-      document.querySelectorAll('input[data-out="'+type+'"]').forEach(i=> i.checked = set.has(i.value));
-    }
-
-    function updateVisibilityByType(t){
-      show(sections.outDesign, t==='design');
-      show(sections.outVideo, t==='video');
-      show(sections.outLive, t==='live');
-      show(sections.sourceTranslation, t==='translation');
-      show(sections.translationAssigneeWrap, t==='translation');
-      show(sections.otherAssigneeWrap, t==='other');
-      show(sections.rolesVideo, t==='video');
-      show(sections.rolesDesign, t==='design');
-      show(sections.rolesLive, t==='live');
-      show(sections.recordTypeWrap, t==='video');
-    }
-
-    function fillContactsButtons(){
-      const tg = el('requesterTelegram').value || '';
-      el('contactTg').href = tg ? ('https://t.me/' + tg.replace('@','')) : 'https://t.me/';
-      const mail = el('requesterEmail').value || '';
-      el('contactMail').href = mail ? ('mailto:' + mail) : 'mailto:';
-    }
-
-    async function loadCard(){
-      if (!idParam) {
-        el('subtitle').textContent = 'Режим: новая заявка';
-        el('id').value = '';
-        return;
-      }
-      el('subtitle').textContent = 'Загрузка #' + idParam + '...';
-      try{
-        const res = await fetch(API_URL + '?id=' + encodeURIComponent(idParam));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error || 'Ошибка загрузки');
-        const d = json.data;
-
-        ['id','createdAt','status','taskType','deadline','recordType','keyMessage','notes','materialsLink','sourceLink','requesterName','requesterTelegram','requesterEmail','telegramContact','emailContact','approver','remarks','translationAssignee','otherAssignee']
-          .forEach(f=>{ if (el(f)) el(f).value = d[f] ?? ''; });
-
-        el('sendTelegram').checked = String(d.sendTelegram).toLowerCase()==='true';
-        el('sendEmail').checked = String(d.sendEmail).toLowerCase()==='true';
-
-        const tt = d.taskType || 'design';
-        updateVisibilityByType(tt);
-        setCheckedValuesByType('design', tt==='design' ? (d.outputOptions||[]) : []);
-        setCheckedValuesByType('video', tt==='video' ? (d.outputOptions||[]) : []);
-        setCheckedValuesByType('live', tt==='live' ? (d.outputOptions||[]) : []);
-
-        if (tt==='translation'){
-          el('sourceLinkTranslation').value = d.sourceLink || '';
-          el('translationAssignee').value = d.translationAssignee || 'Дарья Шендюкова';
-        }
-        if (tt==='other'){
-          el('otherAssignee').value = d.otherAssignee || 'Дарья Шендюкова';
-        }
-
-        setLinkView('materialsLink','materialsLinkView');
-        setLinkView('sourceLink','sourceLinkView');
-
-        fillContactsButtons();
-
-        el('subtitle').textContent = (d.taskType || '') + (d.deadline ? (' • ' + d.deadline) : '');
-      }catch(err){
-        el('subtitle').textContent = 'Ошибка: ' + String(err.message || err);
-        el('saveMsg').innerHTML = '<div class="msg err">Не удалось загрузить карточку: '+String(err.message || err)+'</div>';
-      }
-    }
-
-    function collectPayload(action){
-      const t = el('taskType').value;
-      let outputOptions = [];
-      if (t==='design') outputOptions = getCheckedValuesByType('design');
-      if (t==='video') outputOptions = getCheckedValuesByType('video');
-      if (t==='live') outputOptions = getCheckedValuesByType('live');
-
-      if (t==='translation' && !el('sourceLinkTranslation').value.trim()){
-        throw new Error('Для типа "Перевод" требуется ссылка на источник.');
-      }
-
-      const data = {
-        id: el('id').value || '',
-        status: el('status').value,
-        taskType: t,
-        deadline: el('deadline').value,
-        recordType: el('recordType').value || '',
-        keyMessage: el('keyMessage').value,
-        notes: el('notes').value,
-        materialsLink: el('materialsLink').value,
-        sourceLink: t==='translation' ? el('sourceLinkTranslation').value : el('sourceLink').value,
-        requesterName: el('requesterName').value,
-        requesterTelegram: el('requesterTelegram').value,
-        requesterEmail: el('requesterEmail').value,
-        sendTelegram: el('sendTelegram').checked,
-        telegramContact: el('telegramContact').value,
-        sendEmail: el('sendEmail').checked,
-        emailContact: el('emailContact').value,
-        outputOptions,
-        roleVideoShoot: el('roleVideoShoot') ? el('roleVideoShoot').value : '',
-        roleVideoEdit: el('roleVideoEdit') ? el('roleVideoEdit').value : '',
-        roleVideoSound: el('roleVideoSound') ? el('roleVideoSound').value : '',
-        signVideo: (document.querySelector('input[name="signVideo"]:checked')||{}).value || 'none',
-        roleDesign: el('roleDesign') ? el('roleDesign').value : '',
-        roleLiveCamera: el('roleLiveCamera') ? el('roleLiveCamera').value : '',
-        roleLiveDirector: el('roleLiveDirector') ? el('roleLiveDirector').value : '',
-        roleLiveSound: el('roleLiveSound') ? el('roleLiveSound').value : '',
-        translationAssignee: (t==='translation' && el('translationAssignee')) ? el('translationAssignee').value : '',
-        otherAssignee: (t==='other' && el('otherAssignee')) ? el('otherAssignee').value : '',
-        approver: el('approver').value,
-        remarks: el('remarks').value
-      };
-
-      return { action, data };
-    }
-
-    function toFormData(obj, fd = new FormData(), prefix = '') {
-      Object.entries(obj).forEach(([key, value]) => {
-        const k = prefix ? prefix + '[' + key + ']' : key;
-        if (Array.isArray(value)) {
-          value.forEach(v => fd.append(k + '[]', String(v)));
-        } else if (value !== undefined && value !== null) {
-          fd.append(k, String(value));
-        }
-      });
-      return fd;
-    }
-
-    async function sendToApi(payload){
-      const fd = toFormData(payload);
-      const res = await fetch(API_URL, { method: 'POST', body: fd });
+    el('subtitle').textContent = 'Загрузка #' + idParam + '...';
+    try{
+      const res = await fetch(`${API_BASE}/briefs/${encodeURIComponent(idParam)}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      let json = {};
-      try { json = await res.json(); } catch(e) {}
-      return json;
-    }
+      const json = await res.json();
+      const d = json.data || json; // поддержка формата {data: {...}} или просто {...}
 
-    async function handleCreate(){
-      el('saveMsg').innerHTML = '';
-      try{
-        const payload = collectPayload('create');
-        const json = await sendToApi(payload);
-        const newId = (json && json.data && json.data.id) ? json.data.id : (json.id || '');
-        el('saveMsg').innerHTML = '<div class="msg ok">Заявка создана.'+(newId ? (' ID: '+newId) : '')+'</div>';
-        if (newId) {
-          const url = new URL(location.href);
-          url.searchParams.set('id', newId);
-          history.replaceState(null, '', url.toString());
-          el('id').value = newId;
-          await loadCard();
-        }
-      }catch(err){
-        el('saveMsg').innerHTML = '<div class="msg err">Не удалось создать заявку: '+String(err.message || err)+'</div>';
+      ['id','createdAt','status','taskType','deadline','recordType','keyMessage','notes','materialsLink','sourceLink','requesterName','requesterTelegram','requesterEmail','telegramContact','emailContact','approver','remarks','translationAssignee','otherAssignee']
+        .forEach(f=>{ if (el(f)) el(f).value = d[f] ?? ''; });
+
+      el('sendTelegram').checked = String(d.sendTelegram).toLowerCase()==='true' || d.sendTelegram === true;
+      el('sendEmail').checked = String(d.sendEmail).toLowerCase()==='true' || d.sendEmail === true;
+
+      const tt = d.taskType || 'design';
+      updateVisibilityByType(tt);
+      setCheckedValuesByType('design', tt==='design' ? (d.outputOptions||[]) : []);
+      setCheckedValuesByType('video', tt==='video' ? (d.outputOptions||[]) : []);
+      setCheckedValuesByType('live', tt==='live' ? (d.outputOptions||[]) : []);
+
+      if (tt==='translation'){
+        el('sourceLinkTranslation').value = d.sourceLink || '';
+        el('translationAssignee').value = d.translationAssignee || 'Дарья Шендюкова';
       }
-    }
-
-    async function handleSave(){
-      el('saveMsg').innerHTML = '';
-      try{
-        const payload = collectPayload('update');
-        const json = await sendToApi(payload);
-        el('saveMsg').innerHTML = '<div class="msg ok">Изменения сохранены.</div>';
-      }catch(err){
-        el('saveMsg').innerHTML = '<div class="msg err">Не удалось сохранить: '+String(err.message || err)+'</div>';
+      if (tt==='other'){
+        el('otherAssignee').value = d.otherAssignee || 'Дарья Шендюкова';
       }
+
+      setLinkView('materialsLink','materialsLinkView');
+      setLinkView('sourceLink','sourceLinkView');
+
+      fillContactsButtons();
+
+      el('subtitle').textContent = (d.taskType || '') + (d.deadline ? (' • ' + d.deadline) : '');
+    }catch(err){
+      el('subtitle').textContent = 'Ошибка: ' + String(err.message || err);
+      el('saveMsg').innerHTML = '<div class="msg err">Не удалось загрузить карточку: '+String(err.message || err)+'</div>';
     }
+  }
 
-    async function handleReject(){
-      el('saveMsg').innerHTML = '';
-      try{
-        const payload = collectPayload('reject');
-        const json = await sendToApi(payload);
-        el('saveMsg').innerHTML = '<div class="msg ok">Заявка отклонена.</div>';
-      }catch(err){
-        el('saveMsg').innerHTML = '<div class="msg err">Не удалось отклонить: '+String(err.message || err)+'</div>';
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      el('taskType').addEventListener('change', (e)=>{
-        updateVisibilityByType(e.target.value);
-      });
-
-      ['materialsLink','sourceLink'].forEach(id=>{
-        const input = el(id);
-        input.addEventListener('input', ()=> setLinkView(id, id+'View'));
-      });
-
-      ['requesterTelegram','requesterEmail'].forEach(id=>{
-        el(id).addEventListener('input', fillContactsButtons);
-      });
-
-      el('createBtn').addEventListener('click', handleCreate);
-      el('saveBtn').addEventListener('click', handleSave);
-      el('rejectBtn').addEventListener('click', handleReject);
-
-      updateVisibilityByType('design'); // дефолт
-      loadCard();
-    });
-  </script>
+  function collectPayload(action){
+    const t = el('taskType').value;
+    let outputOptions = [];
+    if (t==='design') outputOptions = getCheckedValuesByType('design');
+    if (t==='video') outputOptions = getCheckedValuesByType('video');
+    if (t==='live') outputOptions =
 </body>
 </html>
